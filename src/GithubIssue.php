@@ -2,6 +2,10 @@
 
 namespace Mervus\GithubIssueWriter;
 
+use Exception;
+use GuzzleHttp\Client;
+use Mervus\GithubIssueWriter\Exceptions\GithubTokenNotSetException;
+
 class GithubIssue
 {
     private string $title;
@@ -14,11 +18,11 @@ class GithubIssue
     private int $issueNumber;
     private bool $isError;
     private bool $isProduction;
-
+    private string $repository;
 
     public function __construct(string $title, Exception $exception)
     {
-        $this->isProduction = App::isProduction();
+        $this->isProduction = getenv('APP_ENV') == 'production';
 
         $this->title = $title;
         $this->message = $exception->getMessage();
@@ -27,11 +31,12 @@ class GithubIssue
         $this->state = "";
         $this->state_reason = "";
         $this->assignees = [];
-        $this->token  = env('GITHUB_TOKEN');
+        $this->token  = getenv('GITHUB_TOKEN');
+        $this->repository = getenv('GITHUB_REPO');
         $this->issueNumber = 0;
 
         if ($this->token == null)
-            throw new \Exception('GITHUB_TOKEN not set in .env');
+            throw new GithubTokenNotSetException();
 
         $this->editIssueIfExists();
     }
@@ -48,15 +53,9 @@ class GithubIssue
 
     public static function createFromException(\Exception $e) : GithubIssue
     {
-        $instance = new self($e->getMessage(), $e->getTraceAsString());
+        $instance = new self($e->getMessage(), $e);
 
         return $instance->create();
-    }
-
-    public function setAssignee(GithubUser $user) : GithubIssue
-    {
-        $this->assignees = [...$this->assignees, getGithubUser($user)];
-        return $this;
     }
 
     public function create() : GithubIssue
@@ -65,7 +64,7 @@ class GithubIssue
         if ($IS_NOT_PRODUCTION)
             throw new Exception("Is not In Production Wont create issue in non production environment", );
 
-        $url = "https://api.github.com/repos/creationx/toolboxx_react/issues" ;
+        $url = "https://api.github.com/repos/$this->repository/issues" ;
 
         $title = htmlspecialchars(stripslashes( $this->title), ENT_QUOTES);
         $body = htmlspecialchars(stripslashes($this->message), ENT_QUOTES);
@@ -78,7 +77,7 @@ class GithubIssue
         $json = [
             'title' => $title,
             'body' => $body,
-            'labels' => $this->isError ? ['bug', 'automated'] : ['automated'],#
+            'labels' => $this->isError ? ['bug'] : [''],#
             'assignee' => $this->assignees, //NEEDS PUSH ACCESS TO WORK
         ];
 
@@ -104,7 +103,7 @@ class GithubIssue
     //TODO private
     public function addCommentWithNewError() : GithubIssue
     {
-        $res = $this->createGuzzleInstance()->request("POST", "https://api.github.com/repos/creationx/toolboxx_react/issues/{$this->issueNumber}/comments", [
+        $res = $this->createGuzzleInstance()->request("POST", "https://api.github.com/repos/$this->repository/issues/{$this->issueNumber}/comments", [
             'json' => [
                 'body' => htmlspecialchars(stripslashes($this->message), ENT_QUOTES),
             ]
@@ -117,7 +116,7 @@ class GithubIssue
         if ($this->issueNumber == null)
             throw new \Exception('Issue not created yet');
 
-        return "https://github.com/creationx/toolboxx_react/issues/{$this->issueNumber}";
+        return "https://github.com/$this->repository/issues/{$this->issueNumber}";
     }
     private function createGuzzleInstance() : Client
     {
@@ -135,9 +134,9 @@ class GithubIssue
     {
         $client = $this->createGuzzleInstance();
 
-        $res = $client->request('GET', "https://api.github.com/repos/creationx/toolboxx_react/issues", [
+        $res = $client->request('GET', "https://api.github.com/repos/$this->repository/issues", [
             'query' => [
-                'labels' => 'automated',
+                'labels' => '',
                 'state' => 'all'
             ]
         ]);
