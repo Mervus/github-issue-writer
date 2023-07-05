@@ -1,0 +1,20 @@
+{
+    "name": "mervus/github-issue-writer",
+    "description": "Github Issue writer for PHP",
+    "type": "library",
+    "require": {
+        "guzzlehttp/guzzle": "7.5",
+        "ext-openssl": "*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Mervus\\GithubIssueWriter\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Marvin Mergili",
+            "email": "iolemcr2@gmail.com"
+        }
+    ]
+}
