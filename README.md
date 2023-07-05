@@ -5,12 +5,12 @@
   <p align="center">
     a small Library to simply access Applications using Oauth2 without having to deal with it.
     <br />
-    <a href="https://github.com/Mervus/api-auth-laravel"><strong>Explore the docs »</strong></a>
+    <a href="https://github.com/Mervus/github-issue-writer"><strong>Explore the docs »</strong></a>
     <br />
     <br />
-    <a href="https://github.com/Mervus/api-auth-laravel/issues">Report Bug</a>
+    <a href="https://github.com/Mervus/github-issue-writer/issues">Report Bug</a>
     ·
-    <a href="https://github.com/Mervus/api-auth-laravel/issues">Request Feature</a>
+    <a href="https://github.com/Mervus/github-issue-writer/issues">Request Feature</a>
   </p>
 
 <!-- GETTING STARTED -->
