@@ -3,9 +3,10 @@
     "description": "Github Issue writer for PHP",
     "type": "library",
     "require": {
-        "guzzlehttp/guzzle": "7.5",
+        "guzzlehttp/guzzle": "^7.5",
         "ext-openssl": "*"
     },
+    "license": "MIT",
     "autoload": {
         "psr-4": {
             "Mervus\\GithubIssueWriter\\": "src/"

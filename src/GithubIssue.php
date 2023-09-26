@@ -4,6 +4,8 @@ namespace Mervus\GithubIssueWriter;
 
 use Exception;
 use GuzzleHttp\Client;
+use GuzzleHttp\Exception\ClientException;
+use Illuminate\Support\Facades\Log;
 use Mervus\GithubIssueWriter\Exceptions\GithubTokenNotSetException;
 
 class GithubIssue
@@ -40,12 +42,13 @@ class GithubIssue
 
         $this->editIssueIfExists();
     }
+
     public function setIssueById(int $id) : GithubIssue
     {
         $this->issueNumber = $id;
         return $this;
     }
-    public function isNotAError() : bool
+    public function isNotAnError() : bool
     {
         $this->isError = false;
         return $this;
@@ -58,39 +61,30 @@ class GithubIssue
         return $instance->create();
     }
 
-    public function create() : GithubIssue
+    public function create() : ?GithubIssue
     {
-        $IS_NOT_PRODUCTION = !$this->isProduction;
-        if ($IS_NOT_PRODUCTION)
-            throw new Exception("Is not In Production Wont create issue in non production environment", );
+        if (!$this->isProduction)
+        {
+            Log::info("GithubIssueWriter: Not in production, not creating issue");
+            return null;
+        }
 
         $url = "https://api.github.com/repos/$this->repository/issues" ;
 
-        $title = htmlspecialchars(stripslashes( $this->title), ENT_QUOTES);
-        $body = htmlspecialchars(stripslashes($this->message), ENT_QUOTES);
-
         if ($this->issueNumber != 0)
-            return $this->addCommentWithNewError();
+        {
+            if ($this->state_reason == "reopened")
+                return $this->reopenIssue();
+            else
+                return $this->addCommentWithNewError();
+        }
 
         $client = $this->createGuzzleInstance();
 
-        $json = [
-            'title' => $title,
-            'body' => $body,
-            'labels' => $this->isError ? ['bug'] : [''],#
-            'assignee' => $this->assignees, //NEEDS PUSH ACCESS TO WORK
-        ];
+        $json = $this->createRequestJson();
 
-        if ($this->issueNumber != 0)
-        {
-            $json['state'] = $this->state;
-            $json['state_reason'] = $this->state_reason;
-        }
 
-        $res = $client->request('POST', $url,
-            [
-                $json
-        ]);
+        $res = $client->request('POST', $url, ["json" => $json]);
 
         $this->issueNumber =  json_decode($res->getBody()->getContents())->number;
         return $this;
@@ -111,23 +105,37 @@ class GithubIssue
 
         return $this;
     }
+
     public function getUrl() : string
     {
-        if ($this->issueNumber == null)
-            throw new \Exception('Issue not created yet');
+        if ($this->issueNumber == 0)
+            throw new Exception("Issue not created yet");
 
         return "https://github.com/$this->repository/issues/{$this->issueNumber}";
     }
     private function createGuzzleInstance() : Client
     {
-        return new \GuzzleHttp\Client(
+        return new Client(
             [
                 "headers" => [
                     'Authorization' => 'Bearer ' . $this->token,
+                    "Accept" => "application/vnd.github+json"
                 ]
             ]
         );
 
+    }
+    private function createRequestJson()
+    {
+        $title = htmlspecialchars(stripslashes( $this->title), ENT_QUOTES);
+        $body = htmlspecialchars(stripslashes($this->message), ENT_QUOTES);
+
+        return  [
+            'title' => $title,
+            'body' => $body,
+            'labels' => $this->isError ? ['bug'] : [''],#
+            'assignees' => $this->assignees, //NEEDS PUSH ACCESS TO WORK
+        ];
     }
 
     private function editIssueIfExists(): void
@@ -142,15 +150,26 @@ class GithubIssue
         ]);
 
         $issues_list = json_decode($res->getBody()->getContents());
-
         foreach ($issues_list as $issue)
         {
             if ($issue->title == $this->title)
             {
                 $this->issueNumber = $issue->number;
                 $this->state = "open";
-                $this->state_reason = "reopened";
+                if ($issue->state == "closed")
+                    $this->state_reason = "reopened";
             }
         }
+    }
+
+    private function reopenIssue()
+    {
+        $json = $this->createRequestJson();
+        $json['state'] = $this->state;
+        $json['state_reason'] = $this->state_reason;
+
+        $res = $this->createGuzzleInstance()->patch("https://api.github.com/repos/$this->repository/issues/{$this->issueNumber}", ["json" => $json]);
+
+        return $this;
     }
 }
