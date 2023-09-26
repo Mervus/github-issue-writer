@@ -5,7 +5,6 @@ namespace Mervus\GithubIssueWriter;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\ClientException;
-use Illuminate\Support\Facades\Log;
 use Mervus\GithubIssueWriter\Exceptions\GithubTokenNotSetException;
 
 class GithubIssue
@@ -63,10 +62,9 @@ class GithubIssue
 
     public function create() : ?GithubIssue
     {
-        if (!$this->isProduction)
+        if ($this->isProduction)
         {
-            Log::info("GithubIssueWriter: Not in production, not creating issue");
-            return null;
+            throw new Exception("App is in Production mode, no Github issues will be created");
         }
 
         $url = "https://api.github.com/repos/$this->repository/issues" ;
