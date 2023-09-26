@@ -3,7 +3,7 @@
 <h3 align="center">github-issue-writer</h3>
 
   <p align="center">
-    a small Library to simply access Applications using Oauth2 without having to deal with it.
+    A small library to write Github Issues fast based on Exceptions
     <br />
     <a href="https://github.com/Mervus/github-issue-writer"><strong>Explore the docs »</strong></a>
     <br />
